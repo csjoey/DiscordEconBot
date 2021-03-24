@@ -12,7 +12,13 @@ const typeInChannels = ["bot_commands","gambling"];
 
 const adminPerms = new Discord.Permissions(['MANAGE_GUILD']);
 const devID = "155528823100669952";
+
+const engWordArr = fs.readFileSync('10000english.txt').toString().split("\n");
+const engWordArrLen = engWordArr.length;
+
+
 // Setup runtime globals
+var guildHotData = {};
 var guildLiveData = {};
 var random;
 
@@ -163,6 +169,19 @@ function shutdownBotSafe(){
     process.kill(process.pid, 'SIGTERM');
 }
 
+function scrambleWord(input){
+    var a = input.split(""),
+    n = a.length;
+
+    for(var i = n - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var tmp = a[i];
+        a[i] = a[j];
+        a[j] = tmp;
+    }
+    return a.join("");
+}
+
 function checkNull(message){
     if(guildLiveData[message.member.guild.id]["currency"][message.member.id] == null){
         guildLiveData[message.member.guild.id]["currency"][message.member.id] = 0;
@@ -245,6 +264,49 @@ function messageHandle(message){
         All time Richest: ${richestTag} - ${richestAmt} 
         `
         );
+    }
+
+    if (command == 'wordearn'){
+        random = Math.random();
+        random = Math.floor((random * 11 * engWordArrLen) % engWordArrLen);
+        var word = engWordArr[random];
+        message.reply(`unscramble and !wordsolve "${scrambleWord(word)} - ${word}" within 2 minutes.`);
+
+        if(!guildHotData[message.guild.id]){
+            guildHotData[message.guild.id] = {};
+        }
+        if(!guildHotData[message.guild.id][message.author.id]){
+            guildHotData[message.guild.id][message.author.id] = {};
+        }
+        guildHotData[message.guild.id][message.author.id]["wordscramble"] = [word,message.createdTimestamp];
+        return;
+    }
+
+    if (command == 'wordsolve'){
+        if(!guildHotData[message.guild.id]){
+            message.reply("No session");
+            return;
+        }
+
+        if(guildHotData[message.guild.id][message.author.id]["wordscramble"]){
+            if(args[0]){
+                if((message.createdTimestamp - guildHotData[message.guild.id][message.author.id]["wordscramble"][1]) < 120000){
+                    if(args[0] == guildHotData[message.guild.id][message.author.id]["wordscramble"][0]){
+                        checkNull(message);
+                        guildLiveData[message.member.guild.id]["currency"][message.member.id] += args[0].length;
+                        message.reply(`Correct! you have earned ${args[0].length} coins.`)
+                    }else{
+                        message.reply("Incorrect solution.");
+                    }
+                }else{
+                    message.reply("Expired session.");
+                }
+            }else{
+                message.reply("No word provided.");
+            }
+        }else{
+            message.reply("No active session.");
+        }
     }
 
     if (command == 'dev' && (message.author.id == "155528823100669952" && args[0])){
