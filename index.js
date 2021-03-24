@@ -270,7 +270,7 @@ function messageHandle(message){
         random = Math.random();
         random = Math.floor((random * 11 * engWordArrLen) % engWordArrLen);
         var word = engWordArr[random];
-        message.reply(`unscramble and !wordsolve "${scrambleWord(word)} - ${word}" within 2 minutes.`);
+        message.reply(`unscramble and !wordsolve "${scrambleWord(word)}" within 2 minutes.`);
 
         if(!guildHotData[message.guild.id]){
             guildHotData[message.guild.id] = {};
