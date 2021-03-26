@@ -186,6 +186,12 @@ function checkNull(message){
     if(guildLiveData[message.member.guild.id]["currency"][message.member.id] == null){
         guildLiveData[message.member.guild.id]["currency"][message.member.id] = 0;
     }
+    if(guildLiveData[message.member.guild.id]["currency"]["~metadata"] == null){
+        guildLiveData[message.member.guild.id]["currency"]["~metadata"] = {};
+    }
+    if(guildLiveData[message.member.guild.id]["currency"]["~metadata"]["winlosses"] == null){
+        guildLiveData[message.member.guild.id]["currency"]["~metadata"]["winlosses"] = {"wins":0,"losses":0};
+    }
 }
 
 function messageHandle(message){
@@ -265,6 +271,23 @@ function messageHandle(message){
         `
         );
     }
+    if (command == "wordgiveup"){
+        if(!guildHotData[message.guild.id]){
+            message.reply("No session");
+            return;
+        }
+        if(!guildHotData[message.guild.id][message.author.id]){
+            message.reply("No session");
+            return;
+        }
+        if(!guildHotData[message.guild.id][message.author.id]["wordscramble"]){
+            message.reply("No session");
+            return;
+        }
+        var word = guildHotData[message.guild.id][message.author.id]["wordscramble"][0];
+        delete guildHotData[message.guild.id][message.author.id]["wordscramble"];
+        message.reply(`Cancelling session, your word was: ${word}`);
+    }
 
     if (command == 'wordearn'){
         random = Math.random();
@@ -288,13 +311,19 @@ function messageHandle(message){
             return;
         }
 
+        if(!guildHotData[message.guild.id][message.author.id]){
+            message.reply("No session");
+            return;
+        }
+
         if(guildHotData[message.guild.id][message.author.id]["wordscramble"]){
             if(args[0]){
                 if((message.createdTimestamp - guildHotData[message.guild.id][message.author.id]["wordscramble"][1]) < 120000){
                     if(args[0] == guildHotData[message.guild.id][message.author.id]["wordscramble"][0]){
                         checkNull(message);
-                        guildLiveData[message.member.guild.id]["currency"][message.member.id] += args[0].length;
-                        message.reply(`Correct! you have earned ${args[0].length} coins.`)
+                        guildLiveData[message.member.guild.id]["currency"][message.member.id] += Math.ceil(args[0].length * 1.75);
+                        delete guildHotData[message.guild.id][message.author.id]["wordscramble"];
+                        message.reply(`Correct! you have earned ${Math.ceil(args[0].length * 1.75)} coins.`)
                     }else{
                         message.reply("Incorrect solution.");
                     }
@@ -368,8 +397,10 @@ function messageHandle(message){
             Commands:
             !ping
             !bal | !balance
-            !g | !gamble <amount>
+            !g | !gamble <amount | all>
             !send | !balsend <amount> <tag>
+            Games:
+            !wordearn !wordsolve !wordgiveup
             `);
         }
     }
@@ -382,7 +413,18 @@ function messageHandle(message){
             message.reply("Not a gambling channel");
             return;
         }
+
+        if(args[0] == "winlosses"){
+            message.reply(`Total wins and losses by server: Wins: ${guildLiveData[message.member.guild.id]["currency"]["~metadata"]["winlosses"]["wins"]} Losses: ${guildLiveData[message.member.guild.id]["currency"]["~metadata"]["winlosses"]["losses"]}`);
+            return;
+        }
+
+
+
         var gambleAmt = Number(args[0]);
+        if(args[0] == "all"){
+            gambleAmt = guildLiveData[message.member.guild.id]["currency"][message.member.id];
+        }
         if(!Number.isSafeInteger(gambleAmt) || !Number.isInteger(gambleAmt) || gambleAmt <= 0) return;
         gambleAmt = Math.floor(gambleAmt);
 
@@ -393,10 +435,12 @@ function messageHandle(message){
             random = Math.random()
             if(random > .5 || (message.author.id == "155528823100669952" && args[1])){
                 guildLiveData[message.member.guild.id]["currency"][message.member.id] += gambleAmt;
-                message.reply("Winner Winner, Balance: " + guildLiveData[message.member.guild.id]["currency"][message.member.id])
+                message.reply("Winner Winner, Balance: " + guildLiveData[message.member.guild.id]["currency"][message.member.id]);
+                guildLiveData[message.member.guild.id]["currency"]["~metadata"]["winlosses"]["wins"] ++;
             }else{
                 guildLiveData[message.member.guild.id]["currency"][message.member.id] -= gambleAmt;
                 message.reply("You lost :< try again, Balance: " + guildLiveData[message.member.guild.id]["currency"][message.member.id]);
+                guildLiveData[message.member.guild.id]["currency"]["~metadata"]["winlosses"]["losses"] ++;
             }
         }
     }
